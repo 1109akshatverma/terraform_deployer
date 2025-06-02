@@ -29,15 +29,15 @@ def run_terraform(workspace, user_credentials, deployment_id):
             "status": "failed",
             "message": "Unsupported provider"
         }
-# remove this comment 
-#    MY_ACCESS_KEY = ""
-#    MY_SECRET_KEY = ""
+
+    m-a-k = ""
+    a-s-k = ""
     MY_S3_BUCKET = "pject-logs"
 
     logging_s3 = boto3.client(
         's3',
-        aws_access_key_id=MY_ACCESS_KEY,
-        aws_secret_access_key=MY_SECRET_KEY
+        aws_access_key_id=m-a-k,
+        aws_secret_access_key=m-s-k
     )
 
     try:
