@@ -29,7 +29,7 @@ def run_terraform(workspace, user_credentials, deployment_id):
             "status": "failed",
             "message": "Unsupported provider"
         }
-
+# enter access key and security key here
     m-a-k = ""
     a-s-k = ""
     MY_S3_BUCKET = "pject-logs"
