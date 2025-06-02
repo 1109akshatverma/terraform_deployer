@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terraform Template Deployer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            white-space: pre-wrap;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Deploy Terraform Template</h1>
+
+    <div class="form-group">
+        <label for="provider">Cloud Provider:</label>
+        <select id="provider" onchange="toggleCredentials()">
+            <option value="aws">AWS</option>
+            <option value="azure">Azure</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="file">Terraform Template (zip):</label>
+        <input type="file" id="file" accept=".zip">
+    </div>
+
+    <!-- AWS Credentials -->
+    <div id="aws-credentials">
+        <div class="form-group">
+            <label for="access_key_id">AWS Access Key ID:</label>
+            <input type="text" id="access_key_id">
+        </div>
+        <div class="form-group">
+            <label for="secret_access_key">AWS Secret Access Key:</label>
+            <input type="text" id="secret_access_key">
+        </div>
+    </div>
+
+    <!-- Azure Credentials -->
+    <div id="azure-credentials" style="display:none;">
+        <div class="form-group">
+            <label for="client_id">Azure Client ID:</label>
+            <input type="text" id="client_id">
+        </div>
+        <div class="form-group">
+            <label for="client_secret">Azure Client Secret:</label>
+            <input type="text" id="client_secret">
+        </div>
+        <div class="form-group">
+            <label for="tenant_id">Azure Tenant ID:</label>
+            <input type="text" id="tenant_id">
+        </div>
+        <div class="form-group">
+            <label for="subscription_id">Azure Subscription ID:</label>
+            <input type="text" id="subscription_id">
+        </div>
+    </div>
+
+    <button onclick="deploy()">Deploy</button>
+    <div id="result"></div>
+
+    <script>
+        function toggleCredentials() {
+            const provider = document.getElementById('provider').value;
+            document.getElementById('aws-credentials').style.display = provider === 'aws' ? 'block' : 'none';
+            document.getElementById('azure-credentials').style.display = provider === 'azure' ? 'block' : 'none';
+        }
+
+        async function deploy() {
+            const fileInput = document.getElementById('file');
+            const provider = document.getElementById('provider').value;
+            const resultDiv = document.getElementById('result');
+
+            if (!fileInput.files[0]) {
+                resultDiv.innerText = "Please provide a zip file.";
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('provider', provider);
+
+            if (provider === 'aws') {
+                formData.append('access_key_id', document.getElementById('access_key_id').value);
+                formData.append('secret_access_key', document.getElementById('secret_access_key').value);
+            } else {
+                formData.append('client_id', document.getElementById('client_id').value);
+                formData.append('client_secret', document.getElementById('client_secret').value);
+                formData.append('tenant_id', document.getElementById('tenant_id').value);
+                formData.append('subscription_id', document.getElementById('subscription_id').value);
+            }
+
+            resultDiv.innerText = "Uploading...";
+
+            try {
+                const uploadResponse = await fetch('http://localhost:8000/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const uploadData = await uploadResponse.json();
+                if (!uploadResponse.ok) throw new Error(uploadData.detail || 'Upload failed');
+
+                const deploymentId = uploadData.deployment_id;
+                resultDiv.innerText = `Deployment ID: ${deploymentId}\nDeploying...`;
+
+                const deployResponse = await fetch(`http://localhost:8000/deploy/${deploymentId}`, {
+                    method: 'POST'
+                });
+                const deployData = await deployResponse.json();
+                if (!deployResponse.ok) throw new Error(deployData.error || 'Deployment failed');
+
+                const statusResponse = await fetch(`http://localhost:8000/status/${deploymentId}`);
+                const statusData = await statusResponse.json();
+                if (statusData.status === 'success') {
+                    resultDiv.innerText = `Deployment Summary:\n${statusData.summary}`;
+                } else {
+                    resultDiv.innerText = `Status: ${statusData.status}`;
+                }
+
+            } catch (error) {
+                resultDiv.innerText = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
